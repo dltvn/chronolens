@@ -27,10 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  predictRaceWithCrop,
-  predictAgeAgnosticWithCrop,
-  predictAgeGenderSpecificWithCrop,
-  predictGenderWithCrop,
+  predictAllWithCrop,
   type AgeAgnosticWithCropResponse,
   type RaceWithCropResponse,
   type GenderSpecificWithCropResponse,
@@ -182,53 +179,49 @@ export default function App() {
     setSpecificResult(null);
     setRaceResult(null);
 
-    const [genderRes, agnosticRes, specificRes, raceRes] = await Promise.allSettled([
-      predictGenderWithCrop(imageFile),
-      predictAgeAgnosticWithCrop(imageFile),
-      predictAgeGenderSpecificWithCrop(imageFile),
-      predictRaceWithCrop(imageFile),
-    ]);
+    try {
+      const combined = await predictAllWithCrop(imageFile);
+      const sharedCrop = {
+        cropped_image_base64: combined.cropped_image_base64,
+        cropped_image_mime_type: combined.cropped_image_mime_type,
+      };
 
-    const nextErrors: string[] = [];
+      setUploadResult({
+        gender: combined.gender.gender,
+        confidence: combined.gender.confidence,
+        prob_female: combined.gender.prob_female,
+        prob_male: combined.gender.prob_male,
+        ...sharedCrop,
+      });
 
-    if (genderRes.status === "fulfilled") {
-      setUploadResult(genderRes.value);
-    } else {
-      nextErrors.push(
-        `Gender endpoint failed: ${genderRes.reason?.message ?? "Unknown error"}`
-      );
+      setAgnosticResult({
+        predicted_age: combined.age_agnostic.predicted_age,
+        confidence: combined.age_agnostic.confidence,
+        distribution: combined.age_agnostic.distribution,
+        ...sharedCrop,
+      });
+
+      setSpecificResult({
+        gender: combined.gender.gender,
+        gender_confidence: combined.gender.confidence,
+        predicted_age: combined.age_gender_specific.predicted_age,
+        confidence: combined.age_gender_specific.confidence,
+        distribution: combined.age_gender_specific.distribution,
+        ...sharedCrop,
+      });
+
+      setRaceResult({
+        race: combined.race.race,
+        confidence: combined.race.confidence,
+        probabilities: combined.race.probabilities,
+        ...sharedCrop,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setErrors([`Combined endpoint failed: ${message}`]);
+    } finally {
+      setIsProcessing(false);
     }
-
-    if (agnosticRes.status === "fulfilled") {
-      setAgnosticResult(agnosticRes.value);
-    } else {
-      nextErrors.push(
-        `Agnostic age endpoint failed: ${
-          agnosticRes.reason?.message ?? "Unknown error"
-        }`
-      );
-    }
-
-    if (specificRes.status === "fulfilled") {
-      setSpecificResult(specificRes.value);
-    } else {
-      nextErrors.push(
-        `Gender-specific endpoint failed: ${
-          specificRes.reason?.message ?? "Unknown error"
-        }`
-      );
-    }
-
-    if (raceRes.status === "fulfilled") {
-      setRaceResult(raceRes.value);
-    } else {
-      nextErrors.push(
-        `Race endpoint failed: ${raceRes.reason?.message ?? "Unknown error"}`
-      );
-    }
-
-    setErrors(nextErrors);
-    setIsProcessing(false);
   };
 
   const onFileSelected = async (next: File | null) => {
