@@ -27,10 +27,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  predictRaceWithCrop,
   predictAgeAgnosticWithCrop,
   predictAgeGenderSpecificWithCrop,
   predictGenderWithCrop,
   type AgeAgnosticWithCropResponse,
+  type RaceWithCropResponse,
   type GenderSpecificWithCropResponse,
   type GenderWithCropResponse,
 } from "@/lib/api";
@@ -48,6 +50,13 @@ const genderConfidenceConfig = {
   confidence: {
     label: "Confidence",
     color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
+
+const raceConfidenceConfig = {
+  probability: {
+    label: "Probability",
+    color: "var(--chart-3)",
   },
 } satisfies ChartConfig;
 
@@ -80,6 +89,7 @@ export default function App() {
     useState<AgeAgnosticWithCropResponse | null>(null);
   const [specificResult, setSpecificResult] =
     useState<GenderSpecificWithCropResponse | null>(null);
+  const [raceResult, setRaceResult] = useState<RaceWithCropResponse | null>(null);
 
   const [errors, setErrors] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,17 +157,26 @@ export default function App() {
         ];
   }, [specificResult]);
 
+  const raceConfidenceSeries = useMemo(() => {
+    if (!raceResult) return [];
+    return Object.entries(raceResult.probabilities)
+      .map(([label, probability]) => ({ label, probability }))
+      .sort((a, b) => b.probability - a.probability);
+  }, [raceResult]);
+
   const runAllEndpoints = async (imageFile: File) => {
     setErrors([]);
     setIsProcessing(true);
     setUploadResult(null);
     setAgnosticResult(null);
     setSpecificResult(null);
+    setRaceResult(null);
 
-    const [genderRes, agnosticRes, specificRes] = await Promise.allSettled([
+    const [genderRes, agnosticRes, specificRes, raceRes] = await Promise.allSettled([
       predictGenderWithCrop(imageFile),
       predictAgeAgnosticWithCrop(imageFile),
       predictAgeGenderSpecificWithCrop(imageFile),
+      predictRaceWithCrop(imageFile),
     ]);
 
     const nextErrors: string[] = [];
@@ -190,6 +209,14 @@ export default function App() {
       );
     }
 
+    if (raceRes.status === "fulfilled") {
+      setRaceResult(raceRes.value);
+    } else {
+      nextErrors.push(
+        `Race endpoint failed: ${raceRes.reason?.message ?? "Unknown error"}`
+      );
+    }
+
     setErrors(nextErrors);
     setIsProcessing(false);
   };
@@ -201,6 +228,7 @@ export default function App() {
       setUploadResult(null);
       setAgnosticResult(null);
       setSpecificResult(null);
+      setRaceResult(null);
       setIsProcessing(false);
       return;
     }
@@ -534,6 +562,74 @@ export default function App() {
             )}
           </>
         )}
+
+        <div className="mt-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold">Race Prediction</h2>
+            <p className="text-sm text-muted-foreground">
+              Multi-class race model output from the same cropped and aligned face.
+            </p>
+          </div>
+
+          {raceResult ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardDescription>Predicted Class</CardDescription>
+                  <CardTitle className="text-4xl uppercase">
+                    {raceResult.race}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardDescription>Top-Class Confidence</CardDescription>
+                  <CardTitle className="text-4xl">
+                    {(raceResult.confidence * 100).toFixed(2)}%
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Race Class Probabilities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer
+                    config={raceConfidenceConfig}
+                    className="h-[280px] w-full"
+                  >
+                    <BarChart data={raceConfidenceSeries}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="label" />
+                      <YAxis
+                        tickFormatter={(v) => `${(Number(v) * 100).toFixed(0)}%`}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="probability"
+                        fill="var(--color-probability)"
+                        radius={10}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="flex h-32 flex-col items-center justify-center rounded-xl border text-muted-foreground">
+              {isProcessing ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <MoveRight className="mb-2 h-8 w-8 opacity-70" />
+                  <p className="text-sm">Upload an image to run race inference</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </section>
     </main>
   );

@@ -25,6 +25,14 @@ export type GenderSpecificWithCropResponse = {
   cropped_image_mime_type: string;
 };
 
+export type RaceWithCropResponse = {
+  race: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+  cropped_image_base64: string;
+  cropped_image_mime_type: string;
+};
+
 const DEFAULT_API_BASE = "http://127.0.0.1:8000/api";
 const API_BASE = (import.meta.env.VITE_API_BASE ?? DEFAULT_API_BASE).replace(
   /\/$/,
@@ -64,4 +72,8 @@ export function predictAgeGenderSpecificWithCrop(file: File) {
     "/predict/age-gender-specific-with-crop",
     file
   );
+}
+
+export function predictRaceWithCrop(file: File) {
+  return postImage<RaceWithCropResponse>("/predict/race-with-crop", file);
 }
