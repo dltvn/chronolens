@@ -34,7 +34,7 @@ import {
   type GenderWithCropResponse,
 } from "@/lib/api";
 
-type ModelMode = "agnostic" | "specific";
+type ModelMode = "agnostic" | "specific" | "race";
 
 const distributionConfig = {
   probability: {
@@ -110,8 +110,14 @@ export default function App() {
         specificResult.cropped_image_mime_type
       );
     }
+    if (mode === "race" && raceResult) {
+      return toDataUrl(
+        raceResult.cropped_image_base64,
+        raceResult.cropped_image_mime_type
+      );
+    }
     return null;
-  }, [uploadResult, agnosticResult, specificResult, mode]);
+  }, [uploadResult, agnosticResult, specificResult, raceResult, mode]);
 
   const agnosticSeries = useMemo(
     () =>
@@ -285,6 +291,7 @@ export default function App() {
               >
                 <option value="agnostic">Gender Agnostic</option>
                 <option value="specific">Gender Specific</option>
+                <option value="race">Race</option>
               </select>
             </div>
           </div>
@@ -440,7 +447,7 @@ export default function App() {
               </div>
             )}
           </>
-        ) : (
+        ) : mode === "specific" ? (
           <>
             <div className="mb-6">
               <h2 className="text-2xl font-semibold">Gender-Specific Output</h2>
@@ -567,75 +574,78 @@ export default function App() {
               </div>
             )}
           </>
+        ) : (
+          <>
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Race Output</h2>
+              <p className="text-sm text-muted-foreground">
+                Multi-class pipeline: one race classifier predicts class
+                probabilities from the cropped face.
+              </p>
+            </div>
+
+            {raceResult ? (
+              <>
+                <div className="mb-6 grid gap-6 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardDescription>Predicted Class</CardDescription>
+                      <CardTitle className="text-4xl uppercase">
+                        {raceResult.race}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardDescription>Top-Class Confidence</CardDescription>
+                      <CardTitle className="text-4xl">
+                        {(raceResult.confidence * 100).toFixed(2)}%
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Race Class Probabilities</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer
+                      config={raceConfidenceConfig}
+                      className="h-[360px] w-full"
+                    >
+                      <BarChart data={raceConfidenceSeries}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="label" />
+                        <YAxis
+                          tickFormatter={(v) => `${(Number(v) * 100).toFixed(0)}%`}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar
+                          dataKey="probability"
+                          fill="var(--color-probability)"
+                          radius={10}
+                        />
+                      </BarChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <div className="flex h-32 flex-col items-center justify-center rounded-xl border text-muted-foreground">
+                {isProcessing ? (
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                ) : (
+                  <>
+                    <MoveRight className="mb-2 h-8 w-8 opacity-70" />
+                    <p className="text-sm">Upload an image to run race inference</p>
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
-
-        <div className="mt-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold">Race Prediction</h2>
-            <p className="text-sm text-muted-foreground">
-              Multi-class race model output from the same cropped and aligned face.
-            </p>
-          </div>
-
-          {raceResult ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardDescription>Predicted Class</CardDescription>
-                  <CardTitle className="text-4xl uppercase">
-                    {raceResult.race}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardDescription>Top-Class Confidence</CardDescription>
-                  <CardTitle className="text-4xl">
-                    {(raceResult.confidence * 100).toFixed(2)}%
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Race Class Probabilities</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer
-                    config={raceConfidenceConfig}
-                    className="h-[280px] w-full"
-                  >
-                    <BarChart data={raceConfidenceSeries}>
-                      <CartesianGrid vertical={false} />
-                      <XAxis dataKey="label" />
-                      <YAxis
-                        tickFormatter={(v) => `${(Number(v) * 100).toFixed(0)}%`}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar
-                        dataKey="probability"
-                        fill="var(--color-probability)"
-                        radius={10}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="flex h-32 flex-col items-center justify-center rounded-xl border text-muted-foreground">
-              {isProcessing ? (
-                <Loader2 className="h-8 w-8 animate-spin" />
-              ) : (
-                <>
-                  <MoveRight className="mb-2 h-8 w-8 opacity-70" />
-                  <p className="text-sm">Upload an image to run race inference</p>
-                </>
-              )}
-            </div>
-          )}
-        </div>
       </section>
     </main>
   );
