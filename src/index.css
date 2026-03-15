@@ -40,6 +40,26 @@
     --sidebar-ring: oklch(0.708 0 0);
 }
 
+[data-gender-theme="male"] {
+    --primary: oklch(0.56 0.18 254);
+    --primary-foreground: oklch(0.985 0 0);
+    --ring: oklch(0.62 0.16 252);
+    --chart-1: oklch(0.72 0.14 252);
+    --chart-2: oklch(0.63 0.18 255);
+    --chart-3: oklch(0.57 0.18 258);
+    --sidebar-primary: oklch(0.56 0.18 254);
+}
+
+[data-gender-theme="female"] {
+    --primary: oklch(0.66 0.2 356);
+    --primary-foreground: oklch(0.985 0 0);
+    --ring: oklch(0.7 0.17 355);
+    --chart-1: oklch(0.76 0.15 351);
+    --chart-2: oklch(0.69 0.19 357);
+    --chart-3: oklch(0.62 0.2 6);
+    --sidebar-primary: oklch(0.66 0.2 356);
+}
+
 .dark {
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);

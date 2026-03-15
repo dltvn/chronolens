@@ -164,6 +164,16 @@ export default function App() {
       .sort((a, b) => b.probability - a.probability);
   }, [raceResult]);
 
+  const genderTheme = useMemo(() => {
+    if (uploadResult?.gender === "male" || uploadResult?.gender === "female") {
+      return uploadResult.gender;
+    }
+    if (specificResult?.gender === "male" || specificResult?.gender === "female") {
+      return specificResult.gender;
+    }
+    return "default";
+  }, [uploadResult, specificResult]);
+
   const runAllEndpoints = async (imageFile: File) => {
     setErrors([]);
     setIsProcessing(true);
@@ -241,7 +251,10 @@ export default function App() {
   };
 
   return (
-    <main className="min-h-svh w-full bg-gradient-to-b from-background via-background to-muted/30">
+    <main
+      data-gender-theme={genderTheme}
+      className="min-h-svh w-full bg-gradient-to-b from-background via-background to-muted/30"
+    >
       <nav className="sticky top-0 z-20 w-full border-b bg-background/90 backdrop-blur">
         <div className="flex w-full flex-col gap-4 px-4 py-4 md:flex-row md:items-end md:justify-between md:px-8">
           <div className="flex items-center gap-3">
